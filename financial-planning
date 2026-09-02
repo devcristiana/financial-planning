@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planilha Financeira</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --moss:#5C7A52;
+    --moss-dark:#3E5A38;
+    --moss-light:#eef3ea;
+    --blue:#3E6E96;
+    --blue-dark:#294B66;
+    --blue-light:#eaf1f6;
+    --ink:#26302a;
+    --paper:#f4f6f2;
+    --card:#ffffff;
+    --line:#e4e8df;
+    --muted:#8a9384;
+    --red:#c0524a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:radial-gradient(circle at 15% 0%, rgba(92,122,82,.08), transparent 40%),
+                      radial-gradient(circle at 100% 100%, rgba(62,110,150,.08), transparent 45%);
+    color:var(--ink);
+    font-family:'Poppins',sans-serif;
+    min-height:100vh;
+    padding:36px 16px 64px;
+  }
+  .sheet{
+    max-width:760px;
+    margin:0 auto;
+    background:var(--card);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 24px 60px -30px rgba(38,48,42,.35), 0 2px 6px rgba(38,48,42,.06);
+  }
+  .cover{
+    background:linear-gradient(120deg,var(--moss-dark) 0%, var(--moss) 55%, var(--blue) 130%);
+    color:#fff;
+    padding:34px 36px 26px;
+  }
+  .cover h1{
+    margin:0;
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:.2px;
+  }
+  .month-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:12px;
+  }
+  .month-row label{
+    font-size:12.5px;
+    color:rgba(255,255,255,.75);
+    font-weight:500;
+  }
+  .month-row input{
+    font-family:'Poppins',sans-serif;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.35);
+    border-radius:8px;
+    color:#fff;
+    font-size:13.5px;
+    padding:6px 12px;
+    outline:none;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .month-row input::placeholder{ color:rgba(255,255,255,.65); }
+  .month-row input:focus{ background:rgba(255,255,255,.22); border-color:#fff; }
+
+  nav.tabs{
+    display:flex;
+    gap:4px;
+    background:var(--blue-light);
+    padding:8px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  nav.tabs button{
+    font-family:inherit;
+    background:none;
+    border:none;
+    color:var(--blue-dark);
+    padding:10px 18px;
+    font-size:13.5px;
+    font-weight:500;
+    cursor:pointer;
+    border-radius:10px;
+    transition:background .15s ease, color .15s ease;
+  }
+  nav.tabs button:hover{ background:rgba(62,110,150,.1); }
+  nav.tabs button.active{
+    color:#fff;
+    background:var(--blue);
+  }
+  .panel{ display:none; padding:30px 36px 38px; }
+  .panel.active{ display:block; }
+
+  h2.section-title{
+    margin:0 0 4px;
+    font-size:15px;
+    font-weight:600;
+    color:var(--moss-dark);
+  }
+  .subnote{
+    margin:0 0 20px;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  table.ledger{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    font-size:14px;
+  }
+  table.ledger thead th{
+    text-align:left;
+    background:var(--moss-light);
+    color:var(--moss-dark);
+    font-weight:600;
+    font-size:11.5px;
+    letter-spacing:.3px;
+    padding:10px 14px;
+  }
+  table.ledger thead th:first-child{ border-radius:10px 0 0 10px; }
+  table.ledger thead th:last-child{ border-radius:0 10px 10px 0; }
+  table.ledger thead th.num{ text-align:right; }
+  table.ledger tbody td{
+    padding:10px 14px;
+    border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  table.ledger tbody tr:hover{ background:#fafbf8; }
+  table.ledger input[type="text"]{
+    width:100%;
+    border:none;
+    background:transparent;
+    font-family:inherit;
+    font-size:14px;
+    color:var(--ink);
+    padding:3px 0;
+  }
+  table.ledger input[type="text"]:focus{ outline:none; border-bottom:1.5px solid var(--blue); }
+  .value-cell{ display:flex; align-items:center; justify-content:flex-end; gap:4px; }
+  .value-cell span.prefix{ color:var(--muted); font-size:13px; }
+  table.ledger input[type="number"]{
+    width:100px;
+    text-align:right;
+    border:none;
+    background:transparent;
+    font-family:inherit;
+    font-size:14px;
+    color:var(--ink);
+    padding:3px 0;
+    -moz-appearance:textfield;
+  }
+  table.ledger input[type="number"]:focus{ outline:none; border-bottom:1.5px solid var(--blue); }
+  table.ledger input[type="number"]::-webkit-outer-spin-button,
+  table.ledger input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+  .status-pill{
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:.3px;
+    border:1px solid var(--line);
+    border-radius:20px;
+    background:#fafbf8;
+    color:var(--muted);
+    padding:5px 12px;
+    cursor:pointer;
+    font-family:inherit;
+    white-space:nowrap;
+    transition:all .15s ease;
+  }
+  .status-pill.paid{
+    color:#fff;
+    border-color:var(--moss);
+    background:var(--moss);
+  }
+
+  .row-remove{
+    background:none;
+    border:none;
+    color:#c7cdc0;
+    cursor:pointer;
+    font-size:17px;
+    line-height:1;
+    padding:2px 6px;
+    border-radius:6px;
+    transition:color .15s ease, background .15s ease;
+  }
+  .row-remove:hover{ color:var(--red); background:#fbeceb; }
+
+  .add-row{
+    margin-top:16px;
+    background:var(--blue-light);
+    border:1px dashed var(--blue);
+    color:var(--blue-dark);
+    font-family:inherit;
+    font-weight:500;
+    font-size:13px;
+    padding:11px 14px;
+    border-radius:10px;
+    cursor:pointer;
+    width:100%;
+    text-align:center;
+    transition:background .15s ease;
+  }
+  .add-row:hover{ background:#dfeaf1; }
+
+  tfoot td{
+    padding:14px 14px 6px;
+    font-weight:700;
+    font-size:14.5px;
+  }
+  tfoot td.num{ text-align:right; color:var(--moss-dark); }
+
+  /* Resumo */
+  .balance-line{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:8px;
+  }
+  .balance-line .pct{ font-size:24px; color:var(--blue-dark); font-weight:700; }
+  .bar-track{
+    height:14px;
+    background:var(--moss-light);
+    border-radius:20px;
+    overflow:hidden;
+    margin-bottom:28px;
+  }
+  .bar-fill{
+    height:100%;
+    border-radius:20px;
+    background:linear-gradient(90deg,var(--moss-dark),var(--moss));
+    transition:width .35s ease;
+  }
+  .bar-fill.over{ background:linear-gradient(90deg,#7a2f28,var(--red)); }
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-bottom:32px;
+  }
+  .summary-grid div{
+    padding:16px 16px;
+    border-radius:14px;
+    background:var(--paper);
+    border:1px solid var(--line);
+  }
+  .summary-grid .label{
+    font-size:10.5px; letter-spacing:.3px; color:var(--muted); margin-bottom:8px; font-weight:600;
+  }
+  .summary-grid .amount{ font-size:18px; font-weight:700; }
+  .summary-grid .amount.income{ color:var(--moss-dark); }
+  .summary-grid .amount.expense{ color:var(--blue-dark); }
+  .summary-grid .amount.balance.positive{ color:var(--moss-dark); }
+  .summary-grid .amount.balance.negative{ color:var(--red); }
+
+  .chart{
+    display:flex;
+    align-items:flex-end;
+    gap:48px;
+    height:200px;
+    padding:0 20px;
+    border-bottom:1px solid var(--line);
+  }
+  .chart .col{
+    display:flex; flex-direction:column; align-items:center;
+    flex:1;
+    height:100%;
+    justify-content:flex-end;
+  }
+  .chart .bar{
+    width:64px;
+    border-radius:10px 10px 0 0;
+    transition:height .4s ease;
+    position:relative;
+  }
+  .chart .bar.income{ background:linear-gradient(180deg,var(--moss),var(--moss-dark)); }
+  .chart .bar.expense{ background:linear-gradient(180deg,var(--blue),var(--blue-dark)); }
+  .chart .bar .amt{
+    position:absolute; top:-24px; left:50%; transform:translateX(-50%);
+    font-size:12.5px; font-weight:600; white-space:nowrap;
+  }
+  .chart .col-label{
+    margin-top:10px; font-size:12.5px; color:var(--muted); font-weight:500;
+  }
+
+  @media (max-width:520px){
+    .cover{ padding:24px 22px 20px; }
+    .cover h1{ font-size:21px; }
+    .panel{ padding:22px 18px 30px; }
+    .summary-grid{ grid-template-columns:1fr; }
+    .chart{ gap:22px; }
+    table.ledger{ font-size:13px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="cover">
+    <h1>Planilha Financeira</h1>
+    <div class="month-row">
+      <label for="monthInput">Mês de referência:</label>
+      <input type="text" id="monthInput" placeholder="ex: Setembro 2026">
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button data-tab="resumo" class="active">Resumo</button>
+    <button data-tab="renda">Renda mensal</button>
+    <button data-tab="despesas">Despesas mensais</button>
+  </nav>
+
+  <!-- RESUMO -->
+  <section class="panel active" id="panel-resumo">
+    <h2 class="section-title">Porcentagem da renda gasta</h2>
+    <div class="balance-line">
+      <span class="pct" id="pctLabel">0%</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="pctBar" style="width:0%"></div></div>
+
+    <h2 class="section-title">Resumo</h2>
+    <p class="subnote">Totais calculados a partir das abas Renda mensal e Despesas mensais</p>
+    <div class="summary-grid">
+      <div>
+        <div class="label">RENDA MENSAL TOTAL</div>
+        <div class="amount income" id="sumIncome">R$ 0,00</div>
+      </div>
+      <div>
+        <div class="label">DESPESAS MENSAIS TOTAIS</div>
+        <div class="amount expense" id="sumExpense">R$ 0,00</div>
+      </div>
+      <div>
+        <div class="label">SALDO</div>
+        <div class="amount balance" id="sumBalance">R$ 0,00</div>
+      </div>
+    </div>
+
+    <div class="chart">
+      <div class="col">
+        <div class="bar income" id="barIncome" style="height:2%"><span class="amt" id="barIncomeAmt">R$ 0</span></div>
+        <div class="col-label">Renda</div>
+      </div>
+      <div class="col">
+        <div class="bar expense" id="barExpense" style="height:2%"><span class="amt" id="barExpenseAmt">R$ 0</span></div>
+        <div class="col-label">Despesas</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RENDA -->
+  <section class="panel" id="panel-renda">
+    <h2 class="section-title">Renda mensal</h2>
+    <p class="subnote">Adicione cada fonte de renda e o respectivo valor</p>
+    <table class="ledger">
+      <thead>
+        <tr><th>ITEM</th><th class="num">VALOR</th><th></th></tr>
+      </thead>
+      <tbody id="incomeBody"></tbody>
+      <tfoot>
+        <tr><td>Total</td><td class="num" id="incomeTotalCell">R$ 0,00</td><td></td></tr>
+      </tfoot>
+    </table>
+    <button class="add-row" id="addIncomeRow">+ Adicionar item de renda</button>
+  </section>
+
+  <!-- DESPESAS -->
+  <section class="panel" id="panel-despesas">
+    <h2 class="section-title">Despesas mensais</h2>
+    <p class="subnote">Adicione cada despesa, o valor e marque se já foi paga</p>
+    <table class="ledger">
+      <thead>
+        <tr><th>ITEM</th><th class="num">VALOR</th><th>STATUS</th><th></th></tr>
+      </thead>
+      <tbody id="expenseBody"></tbody>
+      <tfoot>
+        <tr><td>Total</td><td class="num" id="expenseTotalCell">R$ 0,00</td><td colspan="2"></td></tr>
+      </tfoot>
+    </table>
+    <button class="add-row" id="addExpenseRow">+ Adicionar despesa</button>
+  </section>
+</div>
+
+<script>
+(function(){
+  let state = {
+    month: "",
+    income: [
+      { name: "Renda 1", value: 0 },
+      { name: "Renda 2", value: 0 },
+      { name: "Outros", value: 0 }
+    ],
+    expenses: [
+      { name: "Aluguel", value: 0, paid: false },
+      { name: "Mercado", value: 0, paid: false },
+      { name: "Internet", value: 0, paid: false }
+    ]
+  };
+
+  const incomeBody = document.getElementById('incomeBody');
+  const expenseBody = document.getElementById('expenseBody');
+  const monthInput = document.getElementById('monthInput');
+
+  function fmt(n){
+    return (n||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  }
+
+  async function save(){
+    try{
+      if(window.storage) await window.storage.set('planilha-financeira', JSON.stringify(state));
+    }catch(e){ console.warn('Não foi possível salvar', e); }
+  }
+
+  async function load(){
+    try{
+      if(window.storage){
+        const res = await window.storage.get('planilha-financeira');
+        if(res && res.value){
+          const parsed = JSON.parse(res.value);
+          if(parsed && Array.isArray(parsed.income) && Array.isArray(parsed.expenses)){
+            state = parsed;
+          }
+        }
+      }
+    }catch(e){ /* sem dados salvos ainda */ }
+    monthInput.value = state.month || "";
+    render();
+  }
+
+  function renderIncomeRow(item, idx){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${escapeHtml(item.name)}" data-idx="${idx}" class="income-name" placeholder="Nome da renda"></td>
+      <td>
+        <div class="value-cell">
+          <span class="prefix">R$</span>
+          <input type="number" step="0.01" min="0" value="${item.value || ''}" data-idx="${idx}" class="income-value" placeholder="0,00">
+        </div>
+      </td>
+      <td><button class="row-remove" data-idx="${idx}" title="Remover">×</button></td>
+    `;
+    return tr;
+  }
+
+  function renderExpenseRow(item, idx){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${escapeHtml(item.name)}" data-idx="${idx}" class="expense-name" placeholder="Nome da despesa"></td>
+      <td>
+        <div class="value-cell">
+          <span class="prefix">R$</span>
+          <input type="number" step="0.01" min="0" value="${item.value || ''}" data-idx="${idx}" class="expense-value" placeholder="0,00">
+        </div>
+      </td>
+      <td><button class="status-pill ${item.paid ? 'paid' : ''}" data-idx="${idx}">${item.paid ? 'PAGO' : 'PENDENTE'}</button></td>
+      <td><button class="row-remove" data-idx="${idx}" title="Remover">×</button></td>
+    `;
+    return tr;
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  function render(){
+    incomeBody.innerHTML = '';
+    state.income.forEach((item, idx) => incomeBody.appendChild(renderIncomeRow(item, idx)));
+
+    expenseBody.innerHTML = '';
+    state.expenses.forEach((item, idx) => expenseBody.appendChild(renderExpenseRow(item, idx)));
+
+    attachRowEvents();
+    recalc();
+  }
+
+  function attachRowEvents(){
+    incomeBody.querySelectorAll('.income-name').forEach(el => {
+      el.addEventListener('input', e => { state.income[+e.target.dataset.idx].name = e.target.value; recalc(); save(); });
+    });
+    incomeBody.querySelectorAll('.income-value').forEach(el => {
+      el.addEventListener('input', e => { state.income[+e.target.dataset.idx].value = parseFloat(e.target.value) || 0; recalc(); save(); });
+    });
+    incomeBody.querySelectorAll('.row-remove').forEach(el => {
+      el.addEventListener('click', e => { state.income.splice(+e.target.dataset.idx,1); render(); save(); });
+    });
+
+    expenseBody.querySelectorAll('.expense-name').forEach(el => {
+      el.addEventListener('input', e => { state.expenses[+e.target.dataset.idx].name = e.target.value; recalc(); save(); });
+    });
+    expenseBody.querySelectorAll('.expense-value').forEach(el => {
+      el.addEventListener('input', e => { state.expenses[+e.target.dataset.idx].value = parseFloat(e.target.value) || 0; recalc(); save(); });
+    });
+    expenseBody.querySelectorAll('.status-pill').forEach(el => {
+      el.addEventListener('click', e => {
+        const i = +e.target.dataset.idx;
+        state.expenses[i].paid = !state.expenses[i].paid;
+        render(); save();
+      });
+    });
+    expenseBody.querySelectorAll('.row-remove').forEach(el => {
+      el.addEventListener('click', e => { state.expenses.splice(+e.target.dataset.idx,1); render(); save(); });
+    });
+  }
+
+  function recalc(){
+    const totalIncome = state.income.reduce((s,i) => s + (i.value||0), 0);
+    const totalExpense = state.expenses.reduce((s,i) => s + (i.value||0), 0);
+    const balance = totalIncome - totalExpense;
+    const pct = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0;
+
+    document.getElementById('incomeTotalCell').textContent = fmt(totalIncome);
+    document.getElementById('expenseTotalCell').textContent = fmt(totalExpense);
+
+    document.getElementById('sumIncome').textContent = fmt(totalIncome);
+    document.getElementById('sumExpense').textContent = fmt(totalExpense);
+    const balEl = document.getElementById('sumBalance');
+    balEl.textContent = fmt(balance);
+    balEl.classList.remove('positive','negative');
+    balEl.classList.add(balance >= 0 ? 'positive' : 'negative');
+
+    document.getElementById('pctLabel').textContent = Math.round(pct) + '%';
+    const bar = document.getElementById('pctBar');
+    bar.style.width = Math.min(pct,100) + '%';
+    bar.classList.toggle('over', pct > 100);
+
+    const maxVal = Math.max(totalIncome, totalExpense, 1);
+    const incomeH = Math.max((totalIncome / maxVal) * 100, 2);
+    const expenseH = Math.max((totalExpense / maxVal) * 100, 2);
+    document.getElementById('barIncome').style.height = incomeH + '%';
+    document.getElementById('barExpense').style.height = expenseH + '%';
+    document.getElementById('barIncomeAmt').textContent = fmt(totalIncome);
+    document.getElementById('barExpenseAmt').textContent = fmt(totalExpense);
+  }
+
+  document.getElementById('addIncomeRow').addEventListener('click', () => {
+    state.income.push({ name:'', value:0 });
+    render(); save();
+  });
+  document.getElementById('addExpenseRow').addEventListener('click', () => {
+    state.expenses.push({ name:'', value:0, paid:false });
+    render(); save();
+  });
+
+  monthInput.addEventListener('input', e => { state.month = e.target.value; save(); });
+
+  document.querySelectorAll('nav.tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  load();
+})();
+</script>
+
+</body>
+</html>
