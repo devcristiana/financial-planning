@@ -417,21 +417,19 @@
     return (n||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
   }
 
-  async function save(){
+  function save(){
     try{
-      if(window.storage) await window.storage.set('planilha-financeira', JSON.stringify(state));
+      localStorage.setItem('planilha-financeira', JSON.stringify(state));
     }catch(e){ console.warn('Não foi possível salvar', e); }
   }
 
-  async function load(){
+  function load(){
     try{
-      if(window.storage){
-        const res = await window.storage.get('planilha-financeira');
-        if(res && res.value){
-          const parsed = JSON.parse(res.value);
-          if(parsed && Array.isArray(parsed.income) && Array.isArray(parsed.expenses)){
-            state = parsed;
-          }
+      const raw = localStorage.getItem('planilha-financeira');
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.income) && Array.isArray(parsed.expenses)){
+          state = parsed;
         }
       }
     }catch(e){ /* sem dados salvos ainda */ }
