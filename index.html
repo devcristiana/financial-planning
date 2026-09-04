@@ -476,6 +476,62 @@
   .compare-bar-fill{ height:100%; border-radius:20px; transition:width .35s ease; }
   .compare-row .compare-value{ width:100px; text-align:right; font-size:12.5px; font-weight:600; flex-shrink:0; }
 
+  .table-scroll{ overflow-x:auto; }
+
+  input.expense-category{
+    width:110px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-family:inherit;
+    font-size:12.5px;
+    padding:5px 8px;
+    background:#fafbf8;
+    color:var(--ink);
+  }
+  input.expense-category:focus{ outline:none; border-color:var(--blue); }
+
+  .goal-card{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px 18px;
+    margin-bottom:14px;
+    background:var(--paper);
+  }
+  .goal-card .goal-top{
+    display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;
+  }
+  .goal-card input.goal-name{
+    flex:1; min-width:120px;
+    border:none; background:transparent;
+    font-family:inherit; font-weight:600; font-size:14px; color:var(--ink);
+    padding:2px 0; border-bottom:1px solid transparent;
+  }
+  .goal-card input.goal-name:focus{ outline:none; border-bottom:1.5px solid var(--blue); }
+  .goal-card .goal-max{
+    display:flex; align-items:center; gap:4px;
+    font-size:12.5px; color:var(--muted);
+  }
+  .goal-card .goal-max input{
+    width:80px; text-align:right;
+    border:none; border-bottom:1px solid var(--line);
+    font-family:inherit; font-size:13px; color:var(--ink);
+    padding:2px 0; background:transparent;
+  }
+  .goal-card .goal-max input:focus{ outline:none; border-bottom:1.5px solid var(--blue); }
+  .goal-card .goal-remove{
+    background:none; border:none; color:#c7cdc0; cursor:pointer; font-size:16px; padding:2px 6px; border-radius:6px;
+  }
+  .goal-card .goal-remove:hover{ color:var(--red); background:var(--red-light); }
+  .goal-track{
+    height:12px; background:var(--moss-light); border-radius:20px; overflow:hidden; margin-bottom:8px;
+  }
+  .goal-fill{ height:100%; border-radius:20px; transition:width .35s ease; }
+  .goal-fill.ok{ background:linear-gradient(90deg,var(--moss-dark),var(--moss)); }
+  .goal-fill.warn{ background:linear-gradient(90deg,#a97a1f,#d7a53d); }
+  .goal-fill.over{ background:linear-gradient(90deg,#7a2f28,var(--red)); }
+  .goal-status{ font-size:12px; color:var(--muted); display:flex; justify-content:space-between; }
+  .goal-status .over-text{ color:var(--red); font-weight:600; }
+
   .empty-note{
     font-size:13px; color:var(--muted); text-align:center; padding:24px 0;
   }
@@ -538,6 +594,7 @@
     <button data-tab="resumo" class="active">Resumo</button>
     <button data-tab="renda">Renda mensal</button>
     <button data-tab="despesas">Despesas mensais</button>
+    <button data-tab="metas">Metas</button>
     <button data-tab="comparativo">Comparativo</button>
   </nav>
 
@@ -597,17 +654,37 @@
   <!-- DESPESAS -->
   <section class="panel" id="panel-despesas">
     <h2 class="section-title">Despesas mensais</h2>
-    <p class="subnote">Único = não se repete. Fixo = recorrente todo mês. Parcelado = avança automaticamente ao criar um novo mês</p>
+    <p class="subnote">Único = não se repete. Fixo = recorrente todo mês. Parcelado = avança automaticamente ao criar um novo mês. A categoria é usada nas Metas.</p>
+    <div class="table-scroll">
     <table class="ledger">
       <thead>
-        <tr><th>ITEM</th><th class="num">VALOR</th><th>TIPO</th><th>STATUS</th><th></th></tr>
+        <tr><th>ITEM</th><th class="num">VALOR</th><th>CATEGORIA</th><th>TIPO</th><th>STATUS</th><th></th></tr>
       </thead>
       <tbody id="expenseBody"></tbody>
       <tfoot>
-        <tr><td>Total</td><td class="num" id="expenseTotalCell">R$ 0,00</td><td colspan="3"></td></tr>
+        <tr><td>Total</td><td class="num" id="expenseTotalCell">R$ 0,00</td><td colspan="4"></td></tr>
       </tfoot>
     </table>
+    </div>
     <button class="add-row" id="addExpenseRow">+ Adicionar despesa</button>
+    <datalist id="categoryOptions">
+      <option value="Moradia">
+      <option value="Alimentação">
+      <option value="Transporte">
+      <option value="Lazer">
+      <option value="Saúde">
+      <option value="Educação">
+      <option value="Assinaturas">
+      <option value="Outros">
+    </datalist>
+  </section>
+
+  <!-- METAS -->
+  <section class="panel" id="panel-metas">
+    <h2 class="section-title">Metas de gastos</h2>
+    <p class="subnote">Defina o máximo que quer gastar em cada categoria neste mês</p>
+    <div id="metasContent"></div>
+    <button class="add-row" id="addGoalRow">+ Adicionar meta</button>
   </section>
 
   <!-- COMPARATIVO -->
@@ -623,8 +700,8 @@
 (function(){
   const STORAGE_KEY = 'planilha-financeira-v2';
 
-  function newExpense(name, value, kind){
-    return { name: name||'', value: value||0, paid:false, kind: kind||'unico', parcelaAtual:1, parcelaTotal:1 };
+  function newExpense(name, value, kind, category){
+    return { name: name||'', value: value||0, paid:false, kind: kind||'unico', parcelaAtual:1, parcelaTotal:1, category: category||'' };
   }
 
   let state = {
@@ -655,7 +732,11 @@
     return false;
   }
 
-  function currentMonth(){ return state.months[state.currentKey]; }
+  function currentMonth(){
+    const m = state.months[state.currentKey];
+    if(m && !Array.isArray(m.goals)) m.goals = [];
+    return m;
+  }
 
   const incomeBody = document.getElementById('incomeBody');
   const expenseBody = document.getElementById('expenseBody');
@@ -784,6 +865,9 @@
         </div>
       </td>
       <td>
+        <input type="text" list="categoryOptions" value="${escapeHtml(item.category||'')}" data-idx="${idx}" class="expense-category" placeholder="Categoria">
+      </td>
+      <td>
         <select class="expense-kind" data-idx="${idx}">${kindOptions}</select>
         ${item.kind === 'parcela' ? `
           <div class="parcela-inputs">
@@ -831,6 +915,7 @@
 
     attachRowEvents();
     recalc();
+    renderMetas();
   }
 
   function attachRowEvents(){
@@ -850,7 +935,10 @@
       el.addEventListener('input', e => { m.expenses[+e.target.dataset.idx].name = e.target.value; recalc(); save(); renderComparativo(); });
     });
     expenseBody.querySelectorAll('.expense-value').forEach(el => {
-      el.addEventListener('input', e => { m.expenses[+e.target.dataset.idx].value = parseFloat(e.target.value) || 0; recalc(); save(); renderComparativo(); });
+      el.addEventListener('input', e => { m.expenses[+e.target.dataset.idx].value = parseFloat(e.target.value) || 0; recalc(); save(); renderComparativo(); renderMetas(); });
+    });
+    expenseBody.querySelectorAll('.expense-category').forEach(el => {
+      el.addEventListener('input', e => { m.expenses[+e.target.dataset.idx].category = e.target.value; save(); renderMetas(); });
     });
     expenseBody.querySelectorAll('.expense-kind').forEach(el => {
       el.addEventListener('change', e => {
@@ -859,7 +947,7 @@
         if(item.kind === 'parcela' && (!item.parcelaAtual || !item.parcelaTotal)){
           item.parcelaAtual = 1; item.parcelaTotal = 1;
         }
-        render(); save(); renderComparativo();
+        render(); save(); renderComparativo(); renderMetas();
       });
     });
     expenseBody.querySelectorAll('.parcela-atual').forEach(el => {
@@ -876,7 +964,7 @@
       });
     });
     expenseBody.querySelectorAll('.row-remove').forEach(el => {
-      el.addEventListener('click', e => { m.expenses.splice(+e.target.dataset.idx,1); render(); save(); renderComparativo(); });
+      el.addEventListener('click', e => { m.expenses.splice(+e.target.dataset.idx,1); render(); save(); renderComparativo(); renderMetas(); });
     });
   }
 
@@ -913,6 +1001,95 @@
     document.getElementById('barExpense').style.height = expenseH + '%';
     document.getElementById('barIncomeAmt').textContent = fmt(totalIncome);
     document.getElementById('barExpenseAmt').textContent = fmt(totalExpense);
+  }
+
+  function spentByCategory(m, categoryName){
+    const target = (categoryName||'').trim().toLowerCase();
+    return m.expenses.reduce((sum, item) => {
+      const cat = (item.category||'').trim().toLowerCase();
+      return cat === target ? sum + (item.value||0) : sum;
+    }, 0);
+  }
+
+  function renderMetas(){
+    const el = document.getElementById('metasContent');
+    if(!el) return;
+    const m = currentMonth();
+    if(!m){ el.innerHTML = ''; return; }
+
+    if(m.goals.length === 0){
+      el.innerHTML = '<p class="empty-note">Nenhuma meta definida ainda. Clique em "+ Adicionar meta" para começar.</p>';
+      return;
+    }
+
+    let html = '';
+    m.goals.forEach((goal, idx) => {
+      const spent = spentByCategory(m, goal.name);
+      const max = goal.max || 0;
+      const pct = max > 0 ? (spent / max) * 100 : 0;
+      let fillClass = 'ok';
+      if(pct >= 100) fillClass = 'over';
+      else if(pct >= 80) fillClass = 'warn';
+
+      const remaining = max - spent;
+      html += `
+        <div class="goal-card" data-goal-idx="${idx}">
+          <div class="goal-top">
+            <input type="text" list="categoryOptions" class="goal-name" data-idx="${idx}" value="${escapeHtml(goal.name)}" placeholder="Nome da categoria">
+            <div class="goal-max">
+              Máx. R$ <input type="number" min="0" step="0.01" class="goal-max-input" data-idx="${idx}" value="${max || ''}" placeholder="0,00">
+            </div>
+            <button class="goal-remove" data-idx="${idx}" title="Remover meta">×</button>
+          </div>
+          <div class="goal-track"><div class="goal-fill ${fillClass}" style="width:${Math.min(pct,100)}%"></div></div>
+          <div class="goal-status">
+            <span class="goal-spent-text">Gasto: ${fmt(spent)} de ${fmt(max)}</span>
+            <span class="goal-remaining-text ${remaining < 0 ? 'over-text' : ''}">${remaining < 0 ? 'Passou ' + fmt(Math.abs(remaining)) : 'Restam ' + fmt(remaining)}</span>
+          </div>
+        </div>
+      `;
+    });
+    el.innerHTML = html;
+
+    function updateGoalCard(idx){
+      const goal = m.goals[idx];
+      const card = el.querySelector(`.goal-card[data-goal-idx="${idx}"]`);
+      if(!card || !goal) return;
+      const spentNow = spentByCategory(m, goal.name);
+      const maxNow = goal.max || 0;
+      const pctNow = maxNow > 0 ? (spentNow / maxNow) * 100 : 0;
+      let cls = 'ok';
+      if(pctNow >= 100) cls = 'over';
+      else if(pctNow >= 80) cls = 'warn';
+      const fillEl = card.querySelector('.goal-fill');
+      fillEl.style.width = Math.min(pctNow,100) + '%';
+      fillEl.className = 'goal-fill ' + cls;
+      card.querySelector('.goal-spent-text').textContent = `Gasto: ${fmt(spentNow)} de ${fmt(maxNow)}`;
+      const remNow = maxNow - spentNow;
+      const remEl = card.querySelector('.goal-remaining-text');
+      remEl.textContent = remNow < 0 ? 'Passou ' + fmt(Math.abs(remNow)) : 'Restam ' + fmt(remNow);
+      remEl.classList.toggle('over-text', remNow < 0);
+    }
+
+    el.querySelectorAll('.goal-name').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const idx = +e.target.dataset.idx;
+        m.goals[idx].name = e.target.value;
+        save();
+        updateGoalCard(idx);
+      });
+    });
+    el.querySelectorAll('.goal-max-input').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const idx = +e.target.dataset.idx;
+        m.goals[idx].max = parseFloat(e.target.value) || 0;
+        save();
+        updateGoalCard(idx);
+      });
+    });
+    el.querySelectorAll('.goal-remove').forEach(btn => {
+      btn.addEventListener('click', e => { m.goals.splice(+e.target.dataset.idx,1); save(); renderMetas(); });
+    });
   }
 
   function renderComparativo(){
@@ -974,7 +1151,11 @@
   });
   document.getElementById('addExpenseRow').addEventListener('click', () => {
     currentMonth().expenses.push(newExpense());
-    render(); save(); renderComparativo();
+    render(); save(); renderComparativo(); renderMetas();
+  });
+  document.getElementById('addGoalRow').addEventListener('click', () => {
+    currentMonth().goals.push({ name:'', max:0 });
+    save(); renderMetas();
   });
 
   document.getElementById('newMonthBtn').addEventListener('click', () => {
@@ -992,16 +1173,17 @@
 
     let income = [];
     let expenses = [];
+    let goals = [];
 
     if(copyFrom){
       income = copyFrom.income.map(i => ({ name:i.name, value:i.value }));
       expenses = copyFrom.expenses.reduce((acc, item) => {
         if(item.kind === 'fixo'){
-          acc.push(newExpense(item.name, item.value, 'fixo'));
+          acc.push(newExpense(item.name, item.value, 'fixo', item.category));
         }else if(item.kind === 'parcela'){
           const nextAtual = (item.parcelaAtual||1) + 1;
           if(nextAtual <= (item.parcelaTotal||1)){
-            const e = newExpense(item.name, item.value, 'parcela');
+            const e = newExpense(item.name, item.value, 'parcela', item.category);
             e.parcelaAtual = nextAtual;
             e.parcelaTotal = item.parcelaTotal||1;
             acc.push(e);
@@ -1009,9 +1191,10 @@
         }
         return acc;
       }, []);
+      goals = (copyFrom.goals||[]).map(g => ({ name:g.name, max:g.max }));
     }
 
-    state.months[key] = { label, income, expenses };
+    state.months[key] = { label, income, expenses, goals };
     state.order.push(key);
     state.currentKey = key;
     newMonthPanel.classList.remove('open');
@@ -1026,6 +1209,7 @@
       btn.classList.add('active');
       document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
       if(btn.dataset.tab === 'comparativo') renderComparativo();
+      if(btn.dataset.tab === 'metas') renderMetas();
     });
   });
 
